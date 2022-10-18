@@ -51,7 +51,7 @@ rule run_peppro:
     --genome townecombined \
     --genome-index ~/GENOME/hg38_moth_towne/ \
     --chrom-sizes ~/GENOME/hg38_moth_towne/townecombined.chrom.sizes \
-    --sample-name DNT2_72hr_No_Flavo \
-    --input {input}
-    -O results
+    --sample-name {wildcards.sample} \
+    --input {input} \
+    --output-parent results
     """
