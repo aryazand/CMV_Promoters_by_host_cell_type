@@ -12,7 +12,7 @@ import glob
 rule all:
   input:
     "env/peppro.singularity",
-    expand("raw_data/D-NT2_20220610/{sample}_20220610000_R{direction}.fastq.gz", sample = [4,6], direction = [1,2])
+    expand("raw_data/D-NT2_20220610/{sample}_20220610000_R{direction}.fastq.gz", sample = [4,6], direction = [1,2]),
     expand("results/peppro_results/D-NT2_20220610/{sample}/PEPPRO_completed.flag", sample = [4,6])
 
 rule get_peppro_environement:
