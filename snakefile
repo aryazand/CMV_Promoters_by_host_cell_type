@@ -1,7 +1,7 @@
 import glob
 
 ############################
-# Variables 
+# Variables
 ############################
 
 
@@ -9,10 +9,10 @@ import glob
 ############################
 # Setup Environement
 ############################
-rule all: 
+rule all:
   input:
     "env/peppro.singularity",
-    expand("raw_data/D-NT2_20220610/{sample}_20220610000_R{direction}.fastq.gz", sample = [4,6], direction = [1,2])  
+    expand("raw_data/D-NT2_20220610/{sample}_20220610000_R{direction}.fastq.gz", sample = [4,6], direction = [1,2])
 
 rule get_peppro_environement:
   output:
@@ -26,7 +26,7 @@ rule get_peppro_environement:
 
 rule concatenate_fastq:
   input:
-    glob.glob("raw_data/D-NT2_20220610/{sample}_lane*_20220610000_S*_L00*_R{direction}_001.fastq.gz")
+    lambda wildcards: glob.glob('raw_data/D-NT2_20220610/{sample}_lane*_20220610000_S*_L00*_R{direction}_001.fastq.gz'.format(sample=wildcards.sample, direction=wildcards.direction))
   output:
     "raw_data/D-NT2_20220610/{sample}_20220610000_R{direction}.fastq.gz"
   shell:
