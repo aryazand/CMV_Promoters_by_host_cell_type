@@ -2,8 +2,13 @@
 .Rhistory
 .RData
 .Ruserdata
-.singularity
 
+# Ignore these file types
+*.singularity
+
+
+# Ignore these folders
 sandbox/*
 raw_data/*
 results/*
+.snakemake/*
