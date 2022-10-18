@@ -25,8 +25,8 @@ rule get_peppro_environement:
 #     "raw_data/exp2_72h_UL87HF_Pro-seq"
 
 rule concatenate_fastq:
-  input: 
-    glob.glob("raw_data/D-NT2_20220610/{sample}_lane*_20220610000_S*_R{direction}_001.fastq.gz")
+  input:
+    glob.glob("raw_data/D-NT2_20220610/{sample}_lane*_20220610000_S*_L00*_R{direction}_001.fastq.gz")
   output:
     "raw_data/D-NT2_20220610/{sample}_20220610000_R{direction}.fastq.gz"
   shell:
