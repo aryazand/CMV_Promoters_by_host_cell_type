@@ -6,9 +6,7 @@ configfile: "snakemake_config.yml"
 
 import glob
 
-############################
-# Variables
-############################
+# --- Set Input and Output Filenames --- #
 
 dnt2_raw_runs = ["4_lane1_20220610000_S4_L001_R1_001.fastq.gz",
                   "4_lane1_20220610000_S4_L001_R2_001.fastq.gz",
@@ -20,8 +18,12 @@ dnt2_raw_runs = ["4_lane1_20220610000_S4_L001_R1_001.fastq.gz",
                   "6_lane2_20220610000_S13_L002_R2_001.fastq.gz"]
 
 dnt2_raw_files = expand("raw_data/D-NT2_20220610/{run}", run = dnt2_raw_runs)
+dnt2_processed_fastq = expand("results/processed_fastq/D-NT2_20220610/{sample}_20220610000_R{direction}.trimmed_dedupped.fastq.paired.fq", sample = [4,6], direction = [1,2])
+dnt2_aligned = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000.sam", sample = [4,6])
 
 hff_raw_files = expand("raw_data/HFF_72hr/{SRR_ID}_R{direction}.fastq.gz", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
+hff_processed_fastq = expand("results/processed_fastq/HFF_72hr/{SRR_ID}_R{direction}.trimmed_dedupped.fastq.paired.fq", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
+hff_aligned = expand("results/aligned_reads/HFF_72hr/{SRR_ID}.sam", SRR_ID = ["SRR13848024", "SRR13848026"])
 
 ############################
 # Setup Environement
@@ -37,10 +39,12 @@ rule all:
     expand("raw_data/D-NT2_20220610/{sample}_20220610000_R{direction}.fastq.gz", sample = [4,6], direction = [1,2]),
 
     # Processsed fastq files
-    expand("results/processed_fastq/D-NT2_20220610/{sample}_20220610000_R{direction}.trimmed_dedupped.fastq.gz.paired.fq", sample = [4,6], direction = [1,2]),
+    dnt2_processed_fastq,
+    hff_processed_fastq,
 
     # Aligment Files
-    expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000.sam", sample = [4,6])
+    dnt2_aligned,
+    hff_aligned
 
 rule get_peppro_environement:
   output:
@@ -101,19 +105,19 @@ rule rename_trimgalore_output:
 
 rule run_dedup:
     input:
-        "results/processed_fastq/{experiment}/{sample}.trimmed.fastq.gz"
+        "results/processed_fastq/{experiment}/{sample}.trimmed.fastq"
     output:
-        "results/processed_fastq/{experiment}/{sample}.trimmed_dedupped.fastq.gz"
+        "results/processed_fastq/{experiment}/{sample}.trimmed_dedupped.fastq"
     shell:
 	    "seqkit rmdup -s -o {output} {input}"
 
 rule run_pair:
     input:
-        "results/processed_fastq/{experiment}/{sample}_R1.trimmed_dedupped.fastq.gz",
-        "results/processed_fastq/{experiment}/{sample}_R2.trimmed_dedupped.fastq.gz"
+        "results/processed_fastq/{experiment}/{sample}_R1.trimmed_dedupped.fastq",
+        "results/processed_fastq/{experiment}/{sample}_R2.trimmed_dedupped.fastq"
     output:
-        "results/processed_fastq/{experiment}/{sample}_R1.trimmed_dedupped.fastq.gz.paired.fq",
-        "results/processed_fastq/{experiment}/{sample}_R2.trimmed_dedupped.fastq.gz.paired.fq"
+        "results/processed_fastq/{experiment}/{sample}_R1.trimmed_dedupped.fastq.paired.fq",
+        "results/processed_fastq/{experiment}/{sample}_R2.trimmed_dedupped.fastq.paired.fq"
     shell:
         "fastq_pair {input}"
 
@@ -123,8 +127,8 @@ rule run_pair:
 
 rule align_reads:
     input:
-        f1 = "results/processed_fastq/{experiment}/{sample}_R1.trimmed_dedupped.fastq.gz.paired.fq",
-        f2 = "results/processed_fastq/{experiment}/{sample}_R2.trimmed_dedupped.fastq.gz.paired.fq"
+        f1 = "results/processed_fastq/{experiment}/{sample}_R1.trimmed_dedupped.fastq.paired.fq",
+        f2 = "results/processed_fastq/{experiment}/{sample}_R2.trimmed_dedupped.fastq.paired.fq"
     output:
         "results/aligned_reads/{experiment}/{sample}.sam"
     params:
