@@ -82,8 +82,11 @@ rule concatenate_fastq:
     lambda wildcards: glob.glob('raw_data/D-NT2_20220610/{sample}_lane*_20220610000_S*_L00*_R{direction}_001.fastq.gz'.format(sample=wildcards.sample, direction=wildcards.direction))
   output:
     "raw_data/D-NT2_20220610/{sample}_20220610000_R{direction}.fastq.gz"
+  log:
+      out = "sandbox/concatenate_fastq.{sample}_{direction}.out",
+      err = "sandbox/concatenate_fastq.{sample}_{direction}.err"
   shell:
-    "cat {input} > {output}"
+    "cat {input} > {output} 2> {log.err} 1> {log.out}"
 
 rule run_trim:
     input:
@@ -92,24 +95,33 @@ rule run_trim:
     output:
         "results/processed_fastq/{experiment}/{sample}_R1_val_1.fq",
         "results/processed_fastq/{experiment}/{sample}_R2_val_2.fq"
+    log:
+        out = "sandbox/run_trim.{experiment}_{sample}.out",
+        err = "sandbox/run_trim.{experiment}_{sample}.err"
     shell:
-	    "trim_galore --paired --small_rna --dont_gzip --output_dir results/processed_fastq/D-NT2_20220610/ {input}"
+	    "trim_galore --paired --small_rna --dont_gzip -j 5 --output_dir results/processed_fastq/{wildcards.experiment}/ {input} 2> {log.err} 1> {log.out}"
 
 rule rename_trimgalore_output:
     input:
         "results/processed_fastq/{experiment}/{sample}_R{direction}_val_{direction}.fq"
     output:
         "results/processed_fastq/{experiment}/{sample}_R{direction}.trimmed.fastq"
+    log:
+        out = "sandbox/rename_trimgalore_output.{experiment}_{sample}_R{direction}.out",
+        err = "sandbox/rename_trimgalore_output.{experiment}_{sample}_R{direction}.err"
     shell:
-        "mv {input} {output}"
+        "mv {input} {output}  2> {log.err} 1> {log.out}"
 
 rule run_dedup:
     input:
         "results/processed_fastq/{experiment}/{sample}.trimmed.fastq"
     output:
         "results/processed_fastq/{experiment}/{sample}.trimmed_dedupped.fastq"
+    log:
+        out = "sandbox/run_dedup.{experiment}_{sample}.out",
+        err = "sandbox/run_dedup.{experiment}_{sample}.err"
     shell:
-	    "seqkit rmdup -s -o {output} {input}"
+	    "seqkit rmdup -s -o {output} {input} 2> {log.err} 1> {log.out}"
 
 rule run_pair:
     input:
@@ -118,8 +130,11 @@ rule run_pair:
     output:
         "results/processed_fastq/{experiment}/{sample}_R1.trimmed_dedupped.fastq.paired.fq",
         "results/processed_fastq/{experiment}/{sample}_R2.trimmed_dedupped.fastq.paired.fq"
+    log:
+        out = "sandbox/run_pair.{experiment}_{sample}.out",
+        err = "sandbox/run_pair.{experiment}_{sample}.err"
     shell:
-        "fastq_pair {input}"
+        "fastq_pair {input} 2> {log.err} 1> {log.out}"
 
 ##########################
 # Map Fastq Files
@@ -131,8 +146,11 @@ rule align_reads:
         f2 = "results/processed_fastq/{experiment}/{sample}_R2.trimmed_dedupped.fastq.paired.fq"
     output:
         "results/aligned_reads/{experiment}/{sample}.sam"
+    log:
+        out = "sandbox/align_reads.{experiment}_{sample}.out",
+        err = "sandbox/align_reads.{experiment}_{sample}.err"
     params:
         BOWTIE_INDEX = config["bowtie_index"],
         UMI_SIZE = 8
     shell:
-        "bowtie -x {params.BOWTIE_INDEX} --trim5 {params.UMI_SIZE} --trim3 {params.UMI_SIZE} --fr --best --sam --fullref -1 {input.f1} -2 {input.f2} {output}"
+        "bowtie -x {params.BOWTIE_INDEX} --threads 4 --trim5 {params.UMI_SIZE} --trim3 {params.UMI_SIZE} --fr --best --sam --fullref -1 {input.f1} -2 {input.f2} {output} 2> {log.err} 1> {log.out}"
