@@ -19,11 +19,11 @@ dnt2_raw_runs = ["4_lane1_20220610000_S4_L001_R1_001.fastq.gz",
 
 dnt2_raw_files = expand("raw_data/D-NT2_20220610/{run}", run = dnt2_raw_runs)
 dnt2_processed_fastq = expand("results/processed_fastq/D-NT2_20220610/{sample}_20220610000_R{direction}.trimmed_dedupped.fastq.paired.fq", sample = [4,6], direction = [1,2])
-dnt2_aligned = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000.sam", sample = [4,6])
+dnt2_aligned = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000.bam", sample = [4,6])
 
 hff_raw_files = expand("raw_data/HFF_72hr/{SRR_ID}_R{direction}.fastq.gz", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
 hff_processed_fastq = expand("results/processed_fastq/HFF_72hr/{SRR_ID}_R{direction}.trimmed_dedupped.fastq.paired.fq", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
-hff_aligned = expand("results/aligned_reads/HFF_72hr/{SRR_ID}.sam", SRR_ID = ["SRR13848024", "SRR13848026"])
+hff_aligned = expand("results/aligned_reads/HFF_72hr/{SRR_ID}.bam", SRR_ID = ["SRR13848024", "SRR13848026"])
 
 ############################
 # Setup Environement
@@ -154,3 +154,14 @@ rule align_reads:
         UMI_SIZE = 8
     shell:
         "bowtie -x {params.BOWTIE_INDEX} --threads 4 --trim5 {params.UMI_SIZE} --trim3 {params.UMI_SIZE} --fr --best --sam --fullref -1 {input.f1} -2 {input.f2} {output} 2> {log.err} 1> {log.out}"
+
+rule sam_to_bam:
+  input:
+      "results/aligned_reads/{experiment}/{sample}.sam"
+  output:
+      "results/aligned_reads/{experiment}/{sample}.bam"
+  log:
+      out = "sandbox/align_reads.{experiment}_{sample}.out",
+      err = "sandbox/align_reads.{experiment}_{sample}.err"
+  shell:
+      "samtools view --threads 5 -u {input} | samtools sort --threads 5 -o {output}"
