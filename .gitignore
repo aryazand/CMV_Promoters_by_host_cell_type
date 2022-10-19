@@ -2,7 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
-snakemake_config.yml
 
 # Ignore these file types
 *.singularity
