@@ -60,18 +60,21 @@ rule download_dnt2_data:
 
 rule download_hff_data:
     output:
-        "raw_data/HFF_72hr/{SRR_ID}_1.fastq.gz",
-        "raw_data/HFF_72hr/{SRR_ID}_2.fastq.gz"
+        "raw_data/HFF_72hr/{SRR_ID}_1.fastq",
+        "raw_data/HFF_72hr/{SRR_ID}_2.fastq"
+    log:
+    	out = "sandbox/download_hff_data.{SRR_ID}.out",
+      	err = "sandbox/download_hff_data.{SRR_ID}.err"
     shell:
-        "fasterq-qdump -e 5 -t sandbox -O raw_data/HFF_72hr {wildcards.SRR_ID}"
+        "fasterq-dump -e 5 -t sandbox -O raw_data/HFF_72hr {wildcards.SRR_ID}"
 
 rule rename_hff_data:
     input:
-        "raw_data/HFF_72hr/{SRR_ID}_{direction}.fastq.gz"
+        "raw_data/HFF_72hr/{SRR_ID}_{direction}.fastq"
     output:
         "raw_data/HFF_72hr/{SRR_ID}_R{direction}.fastq.gz"
     shell:
-        "gzip {input} > {output} && rm {input}"
+        "gzip {input} > {output}"
 
 ##########################
 # Process fastq files
