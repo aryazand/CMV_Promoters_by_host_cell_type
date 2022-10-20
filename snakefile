@@ -161,7 +161,7 @@ rule sam_to_bam:
   output:
       "results/aligned_reads/{experiment}/{sample}.bam"
   log:
-      out = "sandbox/align_reads.{experiment}_{sample}.out",
-      err = "sandbox/align_reads.{experiment}_{sample}.err"
+      out = "sandbox/sam_to_bam.{experiment}_{sample}.out",
+      err = "sandbox/sam_to_bam.{experiment}_{sample}.err"
   shell:
       "samtools view --threads 5 -u {input} | samtools sort --threads 5 -o {output}"
