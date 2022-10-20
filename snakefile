@@ -30,8 +30,6 @@ hff_aligned = expand("results/aligned_reads/HFF_72hr/{SRR_ID}.sam", SRR_ID = ["S
 ############################
 rule all:
   input:
-    # Ensure peppro environement is available
-    "env/peppro.singularity",
     dnt2_raw_files,
     hff_raw_files,
 
@@ -45,12 +43,6 @@ rule all:
     # Aligment Files
     dnt2_aligned,
     hff_aligned
-
-rule get_peppro_environement:
-  output:
-    "env/peppro.singularity"
-  shell:
-    "wget -O {output} http://big.databio.org/simages/peppro"
 
 rule download_dnt2_data:
     output:
