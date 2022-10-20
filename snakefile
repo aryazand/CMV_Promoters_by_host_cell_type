@@ -20,10 +20,12 @@ dnt2_raw_runs = ["4_lane1_20220610000_S4_L001_R1_001.fastq.gz",
 dnt2_raw_files = expand("raw_data/D-NT2_20220610/{run}", run = dnt2_raw_runs)
 dnt2_processed_fastq = expand("results/processed_fastq/D-NT2_20220610/{sample}_20220610000_R{direction}.trimmed_dedupped.fastq.paired.fq", sample = [4,6], direction = [1,2])
 dnt2_aligned = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000.bed", sample = [4,6])
+dnt2_5prime_coverage = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000_5prime_coverage.BED", sample = [4,6])
 
 hff_raw_files = expand("raw_data/HFF_72hr/{SRR_ID}_R{direction}.fastq.gz", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
 hff_processed_fastq = expand("results/processed_fastq/HFF_72hr/{SRR_ID}_R{direction}.trimmed_dedupped.fastq.paired.fq", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
 hff_aligned = expand("results/aligned_reads/HFF_72hr/{SRR_ID}.bed", SRR_ID = ["SRR13848024", "SRR13848026"])
+hff_5prime_coverage = expand("results/aligned_reads/HFF_72hr/{SRR_ID}_5prime_coverage.BED", SRR_ID = ["SRR13848024", "SRR13848026"])
 
 ############################
 # Setup Environement
@@ -44,7 +46,11 @@ rule all:
 
     # Aligment Files
     dnt2_aligned,
-    hff_aligned
+    hff_aligned,
+    
+    #5 prime coverage files
+    dnt2_5prime_coverage,
+    hff_5prime_coverage
 
 rule get_peppro_environement:
   output:
@@ -176,3 +182,14 @@ rule bam_to_bed:
       err = "sandbox/bam_to_bed.{experiment}_{sample}.err"
   shell:
       "bedtools bamtobed -i {input} | sort -k1,1 -k2,2n > {output}"
+
+rule bam_to_5prime_coverage:
+  input:
+      "results/aligned_reads/{experiment}/{sample}.bam"
+  output:
+      "results/aligned_reads/{experiment}/{sample}_5prime_coverage.BED"
+  log:
+      out = "sandbox/bam_to_5prime_coverage.{experiment}_{sample}.out",
+      err = "sandbox/bam_to_5prime_coverage.{experiment}_{sample}.err"
+  shell:
+      "bedtools genomecov -d -5 -ibam {input} > {output}"
