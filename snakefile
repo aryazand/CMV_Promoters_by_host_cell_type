@@ -19,7 +19,7 @@ dnt2_raw_runs = ["4_lane1_20220610000_S4_L001_R1_001.fastq.gz",
 
 dnt2_raw_files = expand("raw_data/D-NT2_20220610/{run}", run = dnt2_raw_runs)
 dnt2_processed_fastq = expand("results/processed_fastq/D-NT2_20220610/{sample}_20220610000_R{direction}.trimmed_dedupped.fastq.paired.fq", sample = [4,6], direction = [1,2])
-dnt2_aligned = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000_cmv.bed", sample = [4,6])
+dnt2_aligned = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000_cmv.{ext}", sample = [4,6], ext = ['bed', 'bw'])
 dnt2_5prime_coverage = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000_5prime_coverage_{strand}_strand.tss", sample = [4,6], strand = ["pos", "minus"])
 
 hff_raw_files = expand("raw_data/HFF_72hr/{SRR_ID}_R{direction}.fastq.gz", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
@@ -174,25 +174,24 @@ rule sam_to_bam:
 
 rule index_bam:
   input:
-      "results/aligned_reads/{experiment}/{sample}_allgenomes.bam"
+      "results/aligned_reads/{experiment}/{sample}_{genome}.bam"
   output:
-      "results/aligned_reads/{experiment}/{sample}_allgenomes.bam.bai"
+      "results/aligned_reads/{experiment}/{sample}_{genome}.bam.bai"
   log:
-      out = "sandbox/index_bam.{experiment}_{sample}.out",
-      err = "sandbox/index_bam.{experiment}_{sample}.err"
+      out = "sandbox/index_bam.{experiment}_{sample}_{genome}.out",
+      err = "sandbox/index_bam.{experiment}_{sample}_{genome}.err"
   shell:
       "samtools index {input} 2> {log.err} 1> {log.out}"
 
 rule extract_only_cmv_alignment:
   input:
-      bam = "results/aligned_reads/{experiment}/{sample}_allgenomes.bam",
-      bai = "results/aligned_reads/{experiment}/{sample}_allgenomes.bam.bai"
+      "results/aligned_reads/{experiment}/{sample}_allgenomes.bam",
   output:
       "results/aligned_reads/{experiment}/{sample}_cmv.bam"
   log:
       err = "sandbox/extract_only_cmv_alignment.{experiment}_{sample}.err"
   shell:
-      "samtools view --threads 5 -b {input.bam} FJ616285.1 > {output} 2> {log.err}"
+      "samtools view --threads 5 -b {input} FJ616285.1 > {output} 2> {log.err}"
 
 rule bam_to_bed:
   input:
@@ -203,6 +202,17 @@ rule bam_to_bed:
       err = "sandbox/extract_only_cmv_alignment.{experiment}_{sample}.err"
   shell:
       "bedtools bamtobed -i {input} > {output} 2> {log.err}"
+      
+rule bam_to_bigwig:
+  input:
+      bam = "results/aligned_reads/{experiment}/{sample}_cmv.bam",
+      bai = "results/aligned_reads/{experiment}/{sample}_cmv.bam.bai"
+  output:
+      "results/aligned_reads/{experiment}/{sample}_cmv.bw"
+  log:
+      err = "sandbox/bam_to_bigwig.{experiment}_{sample}.err"
+  shell:
+      "bamCoverage -p 5 -b {input.bam} -o {output} 2> {log.err}"
 
 rule bam_to_5prime_coverage:
   input:
