@@ -19,11 +19,13 @@ dnt2_raw_runs = ["4_lane1_20220610000_S4_L001_R1_001.fastq.gz",
 
 dnt2_raw_files = expand("raw_data/D-NT2_20220610/{run}", run = dnt2_raw_runs)
 dnt2_processed_fastq = expand("results/processed_fastq/D-NT2_20220610/{sample}_20220610000_R{direction}.trimmed_dedupped.fastq.paired.fq", sample = [4,6], direction = [1,2])
-dnt2_aligned = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000.sam", sample = [4,6])
+dnt2_aligned = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000_cmv.{ext}", sample = [4,6], ext = ['bed', 'bw'])
+dnt2_5prime_coverage = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000_5prime_coverage_{strand}_strand.tss", sample = [4,6], strand = ["pos", "minus"])
 
 hff_raw_files = expand("raw_data/HFF_72hr/{SRR_ID}_R{direction}.fastq.gz", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
 hff_processed_fastq = expand("results/processed_fastq/HFF_72hr/{SRR_ID}_R{direction}.trimmed_dedupped.fastq.paired.fq", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
-hff_aligned = expand("results/aligned_reads/HFF_72hr/{SRR_ID}.sam", SRR_ID = ["SRR13848024", "SRR13848026"])
+hff_aligned = expand("results/aligned_reads/HFF_72hr/{SRR_ID}_cmv.bed", SRR_ID = ["SRR13848024", "SRR13848026"])
+hff_5prime_coverage = expand("results/aligned_reads/HFF_72hr/{SRR_ID}_5prime_coverage_{strand}_strand.tss", SRR_ID = ["SRR13848024", "SRR13848026"], strand = ["pos", "minus"])
 
 ############################
 # Setup Environement
@@ -42,7 +44,11 @@ rule all:
 
     # Aligment Files
     dnt2_aligned,
-    hff_aligned
+    hff_aligned,
+
+    #5 prime coverage files
+    dnt2_5prime_coverage,
+    hff_5prime_coverage
 
 rule download_dnt2_data:
     output:
@@ -148,4 +154,73 @@ rule align_reads:
         BOWTIE_INDEX = config["bowtie_index"],
         UMI_SIZE = 8
     shell:
-        "bowtie -x {params.BOWTIE_INDEX} --threads 4 --trim5 {params.UMI_SIZE} --trim3 {params.UMI_SIZE} --fr --best --sam --fullref -1 {input.f1} -2 {input.f2} {output} 2> {log.err} 1> {log.out}"
+        "bowtie -x {params.BOWTIE_INDEX} --threads 4 --trim5 {params.UMI_SIZE} --trim3 {params.UMI_SIZE} --chunkmbs 500 --fr --best --sam --allow-contain --fullref -1 {input.f1} -2 {input.f2} {output} 2> {log.err} 1> {log.out}"
+
+rule sam_to_bam:
+  input:
+      "results/aligned_reads/{experiment}/{sample}.sam"
+  output:
+      "results/aligned_reads/{experiment}/{sample}_allgenomes.bam"
+  log:
+      out = "sandbox/sam_to_bam.{experiment}_{sample}.out",
+      err = "sandbox/sam_to_bam.{experiment}_{sample}.err"
+  shell:
+      "samtools view --threads 5 -u {input} | samtools sort --threads 5 -o {output}"
+
+rule index_bam:
+  input:
+      "results/aligned_reads/{experiment}/{sample}_{genome}.bam"
+  output:
+      "results/aligned_reads/{experiment}/{sample}_{genome}.bam.bai"
+  log:
+      out = "sandbox/index_bam.{experiment}_{sample}_{genome}.out",
+      err = "sandbox/index_bam.{experiment}_{sample}_{genome}.err"
+  shell:
+      "samtools index {input} 2> {log.err} 1> {log.out}"
+
+rule extract_only_cmv_alignment:
+  input:
+      "results/aligned_reads/{experiment}/{sample}_allgenomes.bam",
+  output:
+      "results/aligned_reads/{experiment}/{sample}_cmv.bam"
+  log:
+      err = "sandbox/extract_only_cmv_alignment.{experiment}_{sample}.err"
+  shell:
+      "samtools view --threads 5 -b {input} FJ616285.1 > {output} 2> {log.err}"
+
+rule bam_to_bed:
+  input:
+      "results/aligned_reads/{experiment}/{sample}_cmv.bam"
+  output:
+      "results/aligned_reads/{experiment}/{sample}_cmv.bed"
+  log:
+      err = "sandbox/extract_only_cmv_alignment.{experiment}_{sample}.err"
+  shell:
+      "bedtools bamtobed -i {input} > {output} 2> {log.err}"
+      
+rule bam_to_bigwig:
+  input:
+      bam = "results/aligned_reads/{experiment}/{sample}_cmv.bam",
+      bai = "results/aligned_reads/{experiment}/{sample}_cmv.bam.bai"
+  output:
+      "results/aligned_reads/{experiment}/{sample}_cmv.bw"
+  log:
+      err = "sandbox/bam_to_bigwig.{experiment}_{sample}.err"
+  shell:
+      "bamCoverage -p 5 -b {input.bam} -o {output} 2> {log.err}"
+
+rule bam_to_5prime_coverage:
+  input:
+      "results/aligned_reads/{experiment}/{sample}_cmv.bed"
+  output:
+      plus_strand = "results/aligned_reads/{experiment}/{sample}_5prime_coverage_pos_strand.tss",
+      minus_strand = "results/aligned_reads/{experiment}/{sample}_5prime_coverage_minus_strand.tss"
+  log:
+      err = "sandbox/bam_to_5prime_coverage.{experiment}_{sample}.err"
+  params:
+      ref_cmv_genome = "./raw_data/genomic_data/FJ616285.1.chrom.sizes"
+  shell:
+      """
+      bedtools genomecov -5 -d -strand + -i {input} -g {params.ref_cmv_genome} > {output.plus_strand} 2> {log.err}
+      bedtools genomecov -5 -d -strand - -i {input} -g {params.ref_cmv_genome} > {output.minus_strand} 2> {log.err}
+      """
