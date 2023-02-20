@@ -59,9 +59,13 @@ dependencies:
   - curl=7.86.0=h7bff187_0
   - cutadapt=4.1=py310h1425a21_1
   - cycler=0.11.0=pyhd8ed1ab_0
+  - dart-sass=1.54.4=ha770c72_0
   - deeptools=3.5.1=pyhdfd78af_1
   - deeptoolsintervals=0.1.9=py310h1425a21_4
+  - deno=1.22.0=hf47965d_0
+  - deno-dom=0.1.17=hd9586b0_0
   - dnaio=0.9.1=py310h1425a21_1
+  - esbuild=0.15.5=ha770c72_1
   - expat=2.5.0=h27087fc_0
   - fastq-pair=1.0=h87f3376_3
   - fastqc=0.11.9=hdfd78af_1
@@ -162,6 +166,7 @@ dependencies:
   - python-isal=1.1.0=py310h5764c6d_0
   - python_abi=3.10=2_cp310
   - pyyaml=6.0=py310h5764c6d_5
+  - quarto=1.1.145=ha770c72_0
   - r-abind=1.4_5=r42hc72bb7e_1004
   - r-acepack=1.4.1=r42h8da6f51_1007
   - r-askpass=1.1=r42h06615bd_3
