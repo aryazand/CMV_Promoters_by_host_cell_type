@@ -12,3 +12,4 @@ sandbox/*
 raw_data/*
 results/*
 .snakemake/*
+/.quarto/
