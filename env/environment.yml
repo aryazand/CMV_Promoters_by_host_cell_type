@@ -290,6 +290,7 @@ dependencies:
   - r-numderiv=2016.8_1.1=r42hc72bb7e_4
   - r-openssl=2.0.5=r42hb1dc35e_0
   - r-openxlsx=4.2.5.2=r42h38f115c_0
+  - r-packrat=0.9.0=r42hc72bb7e_0
   - r-parallelly=1.34.0=r42hc72bb7e_0
   - r-pbkrtest=0.5.2=r42hc72bb7e_0
   - r-pillar=1.8.1=r42hc72bb7e_1
@@ -310,6 +311,7 @@ dependencies:
   - r-ps=1.7.2=r42h06615bd_0
   - r-purrr=1.0.1=r42h133d619_0
   - r-quantreg=5.94=r42hb361e29_1
+  - r-quarto=1.2=r42hc72bb7e_1
   - r-r6=2.5.1=r42hc72bb7e_1
   - r-rappdirs=0.3.3=r42h06615bd_1
   - r-rcolorbrewer=1.1_3=r42h785f33e_1
@@ -331,6 +333,7 @@ dependencies:
   - r-rmarkdown=2.20=r42hc72bb7e_0
   - r-rpart=4.1.19=r42h06615bd_0
   - r-rprojroot=2.0.3=r42hc72bb7e_1
+  - r-rsconnect=0.8.29=r42hc72bb7e_0
   - r-rsqlite=2.2.20=r42h38f115c_0
   - r-rstatix=0.7.2=r42hc72bb7e_0
   - r-rstudioapi=0.14=r42hc72bb7e_1
