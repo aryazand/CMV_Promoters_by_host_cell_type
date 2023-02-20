@@ -1,0 +1,375 @@
+---
+title: "Transcription Start Regions in CMV Genome during infection in DNT-2 vs HFF cells"
+author: "Arya Zandvakili"
+format: 
+  html:
+    embed-resources: true
+editor: visual
+project:
+  execute-dir: project
+execute:
+  echo: false
+  warning: false 
+  cache: false
+---
+
+```{r}
+
+# Load Packages
+library(tidyverse)
+library(ggpubr)
+library(knitr)
+library(here)
+library(GenomicRanges)
+library(zoo)
+library(heatmaps)
+library(genbankr)
+library(Gviz)
+library(DT)
+source(here("scripts/tsr_finding_functions.R"))
+
+
+# Import Data --------------
+
+# Consistent Variables
+FJ616285.1.seqinfo = Seqinfo("FJ616285.1", 235147, F, "CMV")
+
+# Import Data
+NT2_72hr_flavo_bed <- rtracklayer::import(here("results/aligned_reads/D-NT2_20220610/6_20220610000_cmv.bed"))
+HFF_72hr_flavo_bed <- rtracklayer::import(here("results/aligned_reads/HFF_72hr/SRR13848026_cmv.bed"))
+
+# Helper Function -----------------
+clean_bed <- function(input_bed) {
+  input_bed$score <- input_bed$score/255
+  seqinfo(input_bed) <- FJ616285.1.seqinfo
+  return(input_bed)
+}
+
+convert_tsrtable_to_grange <- function(TSR_Table, input_seqinfo, width) {
+  
+  TSR.granges <- GRanges(TSR_Table$seqnames, 
+                         ranges = IRanges(start = TSR_Table$start, width = 1), 
+                         seqinfo = input_seqinfo)
+  strand(TSR.granges) <- TSR_Table$strand
+  TSR.granges$maxTSS <- TSR_Table$maxTSS
+  TSR.granges$score_to_mean_ratio <- TSR_Table$center_to_mean_ratio
+  TSR.granges <- resize(TSR.granges, width = width, fix = "center")
+}
+
+create_readdepth_matrix <- function(input_grange, cvg, half_window_size) {
+  input_grange = resize(input_grange, width = half_window_size*2, fix = "center")
+  input_grange = trim(input_grange)
+  rle_list <- cvg[input_grange]
+  rle_matirx <- as.matrix(rle_list)
+}
+
+summarize_columns_by_row_type <- function(input_matrix, row_types){
+  
+  if(class(row_types) != "list") {
+   stop("row_types must be a list of vector(s)") 
+  }
+  if(nrow(input_matrix) != unique(lengths(row_types))) {
+    stop("input_matrix rows must equal length of vectors row_types")
+  }
+  
+  num_col = ncol(input_matrix)
+  
+  # Split Matrix by row_type
+  input_matrix.split <- nrow(input_matrix) %>% seq() %>% split(f = row_types) %>% map(~ input_matrix[.x, ])
+  
+  # Summarize matrices
+  input_matrix.split <- map(input_matrix.split, colMeans, na.rm = T)
+  
+  # Convert to tibble
+  input_matrix.split %>% 
+    bind_cols() %>% 
+    mutate(pos = row_number()-round(num_col/2)) %>%
+    pivot_longer(cols = -pos,  names_to = "TSR_Type", values_to = "value")
+}
+
+calculate_readdepth_by_TSR_type <- function(input_grange, input_bed, half_window_size) {
+  
+  # Calculate strand-specific coverage 
+  cvg.list <- map(c(`+` = "+", `-` = "-"), function(i) coverage(input_bed[strand(input_bed) == i]))
+
+  # Convert grange to read depth matrix
+  read_matrix.list <- map(cvg.list, ~create_readdepth_matrix(input_grange, cvg = .x, half_window_size = half_window_size))
+  
+  #summarize read depth by TSR type
+  tsr_type = list(maxTSS = input_grange$maxTSS, score_to_mean_ratio = input_grange$score_to_mean_ratio)
+  read_matrix.list = map(read_matrix.list, summarize_columns_by_row_type, row_types = tsr_type)
+  read_matrix.list$`-`$value = read_matrix.list$`-`$value*-1  
+  
+  bind_rows(read_matrix.list, .id = "strand")
+}
+
+# Process Data -----------------------
+
+# Adjustment Variables
+tsr_size = 25
+half_window_size = 100
+
+# Clean bed
+bed.files <- list(NT2 = NT2_72hr_flavo_bed, HFF = HFF_72hr_flavo_bed)
+bed.files <- map(bed.files, clean_bed)
+
+# Find TSRs
+TSR.TableList = map(bed.files, find_tsr, half_window_size = half_window_size)
+
+# Convert to Granges
+TSR.GrangesList <- map(TSR.TableList, convert_tsrtable_to_grange, input_seqinfo = FJ616285.1.seqinfo, width = 25)
+
+# Calculate Readdepth Matrix
+TSRsummary <- map2(TSR.GrangesList, bed.files, calculate_readdepth_by_TSR_type, half_window_size = 250) %>%
+  bind_rows(.id = "cell_type") %>%
+  mutate(TSR_Type = factor(TSR_Type, 
+                           levels = c("FALSE.FALSE","FALSE.TRUE", "TRUE.FALSE", "TRUE.TRUE"),
+                           labels = c("Neither", "Center-to-mean ratio only", "maxTSS only", "Both"))
+         )
+
+# Calculate 5' prime coverage
+
+bed.files_5prime <- map(bed.files, resize, width = 1)
+
+TSRsummary.5prime <- 
+  map2(TSR.GrangesList, bed.files_5prime, calculate_readdepth_by_TSR_type, half_window_size = 250) %>%
+  bind_rows(.id = "cell_type") %>%
+  mutate(TSR_Type = factor(TSR_Type, 
+                           levels = c("FALSE.FALSE","FALSE.TRUE", "TRUE.FALSE", "TRUE.TRUE"),
+                           labels = c("Neither", "Center-to-mean ratio only", "maxTSS only", "Both"))
+         )
+```
+
+## Introduction
+
+It is unclear how the CMV may differ in its gene expression activity when infecting different cell types. Here we used results from PRO-seq experiments to compare activity of transcription start regions (TSRs) in the CMV genome 72 hours post-infection in Human Foreskin Fibroblasts (HFF) and neural-like (D-NT2) cells.
+
+## Methods
+
+::: {.panel-tabset group="language"}
+## Calling TSRs
+
+We define a TSR as a region (arbitrary set at `r tsr_size` bp) with a center position that is enriched for 5'-ends relative to background. How *background* is defined depends on the method use. Here we use two methods: the maxTSS method (based on TSRFinder) and Center-to-mean-ratio method (based on iTiSS).
+
+### maxTSS method
+
+1.  Use a sliding window identify all windows with a center position is a maxTSS, i.e. the center points contains the maximum number of 5' ends found in the `r half_window_size*2` bp surrounding that center position (`r half_window_size` bp upstream and `r half_window_size` bp downstream)
+2.  Apply a threshold for maxTSS to determine which of these windows is a "true TSR". We define this threshold as follows: sort all maxTSS values in ascending order, smooth with a rolling average, then log2 transform. Plotting this sorted and transformed maxTSS values results in a curve. Scale X and Y axes between 0 and 1. We define the threshold value at the point that this curve has a slope greater than 1. Similar algorithms used as iTiSS software.
+
+### Center-to-mean-ratio method
+
+1.  Use a sliding window identify determine the center-to-mean-ratio, i.e. the number of 5' ends at the center divided by the mean number of 5' ends in the `r half_window_size*2` bp surrounding that center position (`r half_window_size` bp upstream and `r half_window_size` bp downstream)
+2.  Apply a threshold for center-to-mean-ratio to determine which of these windows is a "true TSR". Use the same algorithm as above to automatically define a threshold value for center-to-mean-ratio
+
+## Read Alignment
+
+*Fill-in later*
+:::
+
+## Results
+
+First let's view the number TSRs identified by both methods. Note, the "Neither" row defines all the areas that a 5 prime end was mapped, but did not meet criteria of a TSR.
+
+```{r}
+
+map(TSR.GrangesList, ~split(.x, list(.x$maxTSS, .x$score_to_mean_ratio))) %>%
+  map(lengths) %>%
+  bind_rows(.id = "cell type") %>%
+  dplyr::rename(Neither = `1`, `maxTSS only` = `2`, `center-to-mean ratio only` = `3`, Both = `4`) %>%
+  kable()
+
+```
+
+@fig-readdepth-comparison shows the average read depth and average number of 5' ends in the identified TSRs. Here *read depth* is defined as the number of aligned reads overlapping a given bp in the genome. The graphs are separated out by whether the region was defined as a TSR by maxTSS, center-to-mean-ratio, both methods, or neither method. Overall, it appears our methods are able differentiate areas enriched for 5' end reads (i.e. TSRs) from other regions. Note the read-depth hasn't been normalized between experiments, therefore comparison between the two cell types cannot be made between these figures.
+
+```{r}
+#| label: fig-readdepth-comparison
+#| column: screen-inset-shaded
+#| fig-cap: "mean read-depth and 5' ends mapped to TSR and surrounding area" 
+#| fig-subcap: 
+#|   - "mean read depth at each position relative to TSRs"
+#|   - "mean number of 5' ends at each position relative to TSRs"
+#| layout-ncol: 2
+
+
+plot_func <- function(x) {
+  ggplot(x) + 
+    geom_line(aes(pos, value, color = strand, group = strand)) + 
+    facet_grid(cell_type~TSR_Type, scales = "free_y") +
+    scale_y_continuous(labels=abs) + 
+    theme_pubr() +
+    theme(legend.position = "none",
+          axis.text = element_text(size = 7))
+}
+
+plot_func(TSRsummary)
+
+plot_func(TSRsummary.5prime)
+
+```
+
+@fig-heatmaps displays read-depth upstream and downstream of individual TSRs in the form of heatmaps.
+
+```{r}
+#| label: fig-heatmaps
+#| fig-cap: Read-depth upstream and downstream of individual TSRs grouped by TSR-identification technique
+#| fig-subcap: 
+#|   - "D-NT2"
+#|   - "HFF"
+#| column: screen-inset-shaded
+#| layout-ncol: 2
+
+create_granges_from_tsrs <- function(x) {
+  x.split <- x %>% split(list(x$maxTSS, x$center_to_mean_ratio))
+  names_list <- c(Neither = "FALSE.FALSE", `maxTSS Only` = "TRUE.FALSE", `Center-to-mean-ratio Only` = "FALSE.TRUE", Both = "TRUE.TRUE")
+  names(x.split) <- names(names_list)[which(names(x.split) == names_list)]
+  x.granges <- x.split %>% map(TSRTable_to_GRanges, input_seqinfo = FJ616285.1.seqinfo, half_window_size = half_window_size*2)
+  x.grangesList <- GRangesList(x.granges)
+  x.grangesList <- reduce(x.grangesList)
+
+  return(x.grangesList)
+}
+
+create_to_heatmap_function <- function(input_grange0, cvg, half_coord = 250) {
+  
+  # Split into GRangeList
+  input_grange <- input_grange0 %>% split(list(.$maxTSS, .$score_to_mean_ratio))
+  names_list <- c(Neither = "1", `maxTSS Only` = "2", `Center-to-mean-ratio Only` = "3", Both = "4")
+  names(input_grange) <- names(names_list)[which(names(input_grange) == names_list)]
+  input_grangeList <- GRangesList(input_grange)
+  
+  #combine overlapping TSRs
+  input_grangeList <- reduce(input_grangeList)
+  
+  # resize and convert to heatmap
+  input_grangeList = resize(input_grangeList, width = half_coord*2, fix = "center")
+  input_grangeList = trim(input_grangeList)
+  input_grangeList = input_grangeList[width(input_grangeList) == half_coord*2]
+  input_grangeList = input_grangeList[lengths(input_grangeList) > 1]
+  input_grangeList = as.list(input_grangeList)
+  map2(input_grangeList, names(input_grangeList),
+       ~ CoverageHeatmap(windows = .x, track = cvg, coords = c(-half_coord, half_coord), label = .y))
+}
+
+
+
+cvg.list <- map(bed.files, coverage)
+heatmaps.list <- map2(TSR.GrangesList, cvg.list, create_to_heatmap_function)
+plotHeatmapList(heatmaps.list$NT2, cex.label=1, color="Reds")
+plotHeatmapList(heatmaps.list$HFF, cex.label=1, color="Reds")
+```
+
+Finally, let's compare the same regions identified as TSRs in D-NT2 vs HFF cells. We will include all TSRs identified by either maxTSS or Center-to-mean-ratio techniques. @fig-genomic_viz displays the genes downstream to any of the identified TSRs, the TSRs that were identified in either HFF, DNT2, or Both cell types, and the number of 5' reads mapped to the CMV genome in both cell types.
+
+```{r}
+#| label: fig-genomic_viz
+#| fig-cap: "Visualization of TSRs, nearby genes, and 5' ends mapped to the CMV genome in HFF and D-NT2 cells. The **top panel** displays genes within 1 kb of any of the TSRs identified in HFF (blue), NT2 (green), or both cell types (orange). The **middle panel** shows TSRs that were identified in D-NT2, HFF, or both cell types. The arrow heads display the direction of transcription from the TSR. TSRs without an arrowhead are bidirectional. The **bottom panel** displays the number 5' ends mapped to the CMV genome in HFF and D-NT2 cells (note: y-axis is log2-scaled)."
+#| fig-dpi: 600
+#| fig-height: 7
+#| fig-width: 18
+#| column: screen-inset-shaded
+
+# Helper Functions ---------------------
+options(ucscChromosomeNames=FALSE)
+strand_specific_coverage <- function(input_grange, input_genome) {
+  cvg.list <- map(c(`+` = "+", `-` = "-"), function(i) coverage(input_grange[strand(input_grange) == i]))
+  cvg.list <- map(cvg.list, as, Class = "GRanges")
+  cvg.list <- as(cvg.list, "GRangesList")
+  cvg.list$`+`$score <- log2(cvg.list$`+`$score)
+  cvg.list$`-`$score <- log2(cvg.list$`-`$score)
+  cvg.list$`-`$score <- cvg.list$`-`$score*-1
+  colnames(mcols(cvg.list$`+`)) <- "pos_score"
+  colnames(mcols(cvg.list$`-`)) <- "neg_score"
+  cvg.list %>% unlist() %>% DataTrack(type=c("S", "g"), groups = rep(c("neg_score", "pos_score")), legend = F)
+}
+
+group_as_bi_vs_unidirectional_TSRs <- function(input_grange, maxgap = 100) {
+  input_grange.plus = input_grange[strand(input_grange) == "+"]
+  input_grange.minus = input_grange[strand(input_grange) == "-"]
+  input_grange.overlap = findOverlaps(input_grange.plus, input_grange.minus, maxgap = maxgap, ignore.strand = T)
+  
+  input_grange.plus_specific = input_grange.plus[-queryHits(input_grange.overlap)]
+  input_grange.minus_specific = input_grange.minus[-subjectHits(input_grange.overlap)]
+  input_grange.not_specific = c(input_grange.plus[input_grange.overlap@from], input_grange.minus[input_grange.overlap@to]) %>%
+    reduce(ignore.strand = T, min.gapwidth = maxgap+1)
+  GRangesList(input_grange.plus_specific, input_grange.minus_specific, input_grange.not_specific) %>% unlist()
+}
+
+find_downstream_genes <- function(input_tsrs, input_genes, maxgap = 1000) {
+  input_tsrs = resize(input_tsrs, width = 1, fix = "center")
+  genes_tsr_overlap <- findOverlapPairs(input_genes, input_tsrs, type = "start", maxgap = 1000)
+  genes_tsr_overlap.plus <- genes_tsr_overlap[start(genes_tsr_overlap@first) > start(genes_tsr_overlap@second) & 
+                                              strand(genes_tsr_overlap@first) == "+"]
+  genes_tsr_overlap.minus <- genes_tsr_overlap[start(genes_tsr_overlap@first) < start(genes_tsr_overlap@second) & 
+                                              strand(genes_tsr_overlap@first) == "-"]
+  c(genes_tsr_overlap.minus@first, genes_tsr_overlap.plus@first) %>% unique()
+}
+
+# Process Data -----------------
+
+# Group TSRs
+TSRs.list <- map(TSR.GrangesList, function(i) i[i$maxTSS == T | i$score_to_mean_ratio == T,])
+TSRs.list <- map(TSRs.list, group_as_bi_vs_unidirectional_TSRs)
+TSRs.list <- GRangesList(TSRs.list)
+
+TSR_intersection <- findOverlaps(TSRs.list$NT2, TSRs.list$HFF)
+TSR.hff_and_nt2 <- findOverlapPairs(TSRs.list$NT2, TSRs.list$HFF)
+TSR.hff_and_nt2 <- union(TSR.hff_and_nt2@first, TSR.hff_and_nt2@second)
+TSR.hff_not_nt2 <- TSRs.list$HFF[-subjectHits(TSR_intersection)]
+TSR.nt2_not_hff <- TSRs.list$NT2[-queryHits(TSR_intersection)]
+TSRs <- GRangesList(TSR.hff_and_nt2, TSR.hff_not_nt2, TSR.nt2_not_hff)
+TSRs <- reduce(TSRs)
+TSRs[[1]]$group = "Both"
+TSRs[[2]]$group = "HFF"
+TSRs[[3]]$group = "DNT2"
+TSRs <- unlist(TSRs)
+
+
+# Make TSR Annotation Track
+TSRs.annotationTrack = resize(TSRs, width = 2000, fix = "center") %>%
+  trim() %>%
+  AnnotationTrack(., groupAnnotation = "group", name = "TSRs", just.group = "above")
+
+# Display genes that are downstream from TSR
+cmv.genbank <- genbankr::readGenBank(here("raw_data/genomic_data/FJ616285.1.gb"))
+cmv.txdb = makeTxDbFromGenBank(cmv.genbank)
+cmv.genes = genes(cmv.txdb) %>% renameSeqlevels(., "FJ616285.1")
+downstream_of_tsr <-  map(TSR.GrangesList, function(i) i[i$maxTSS == T | i$score_to_mean_ratio == T,]) %>% 
+  map(find_downstream_genes, input_genes = cmv.genes, maxgap = 1000)
+
+downstream_of_tsr.common <- subsetByOverlaps(downstream_of_tsr$NT2, downstream_of_tsr$HFF, type="equal")
+downstream_of_tsr.NT2 <- downstream_of_tsr$NT2[!(downstream_of_tsr$NT2$gene_id %in% downstream_of_tsr.common$gene_id)]
+downstream_of_tsr.HFF <- downstream_of_tsr$HFF[!(downstream_of_tsr$HFF$gene_id %in% downstream_of_tsr.common$gene_id)]
+downstream_of_tsr.common$group = "Both"
+downstream_of_tsr.NT2$group = "NT2"
+downstream_of_tsr.HFF$group = "HFF"
+downstream_of_tsr <- GRangesList(downstream_of_tsr.common, downstream_of_tsr.NT2, downstream_of_tsr.HFF) %>% unlist()
+downstream_of_tsr$symbol = downstream_of_tsr$gene_id
+
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+gene_track <- GeneRegionTrack(downstream_of_tsr, chromosome = "FJ616285.1", 
+                              shape = "arrow", name = "Genes", transcriptAnnotation = "gene_id",
+                              feature = downstream_of_tsr$group, Both = cbPalette[2], HFF = cbPalette[3], NT2 = cbPalette[4],
+                              stacking = "squish")
+
+# Make five_prime end reads track
+dt.fiveprime <- map(bed.files_5prime, strand_specific_coverage, input_genome = FJ616285.1.seqinfo)
+dt.fiveprime$NT2@name <- "5' ends in D-NT2"
+dt.fiveprime$HFF@name <- "5' ends in HFF"
+
+plotTracks(list(GenomeAxisTrack(), gene_track, TSRs.annotationTrack, dt.fiveprime$HFF, dt.fiveprime$NT2),
+           from=0,to=seqlengths(seqinfo(cmv.txdb))) 
+```
+
+Despite the read depth in HFF cells being greater than in D-NT2 cells, this analysis reveals `r sum(TSRs$group == "DNT2")` D-NT2 specific TSRs. The following `r nrow(downstream_of_tsr[downstream_of_tsr$group == "NT2"])` genes are within 1 kb downstream of the D-NT2 specific TSRs: `r downstream_of_tsr[downstream_of_tsr$group == "NT2"]$symbol`. These genes may be specific to D-NT2 cells at the 72 hr time point. The following table lists the individual genes that are downstream of the TSRs.
+
+```{r}
+#| label: tbl-downstream-genes
+#| tbl-cap: "CMV Genes with 1 kb downstream of TSRs"
+
+downstream_of_tsr %>% 
+  as_tibble() %>%
+  select(-gene_id) %>%
+  DT::datatable()
+```
