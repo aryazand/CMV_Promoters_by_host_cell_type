@@ -57,8 +57,8 @@ find_tsr <- function(input_bed, half_window_size, technique = c("center_to_mean_
   
   if("center_to_mean_ratio" %in% technique) {
     df <- df %>% 
-      mutate(local_mean = map_dbl(.$local_scores, local_mean_func, window_size = half_window_size*2)) %>%
-      mutate(local_sd = map_dbl(.$local_scores, local_sd_func, window_size = half_window_size*2)) %>%
+      mutate(local_mean = map_dbl(.$local_scores, local_mean_func, window_size = 1 + half_window_size*2)) %>%
+      mutate(local_sd = map_dbl(.$local_scores, local_sd_func, window_size = 1 + half_window_size*2)) %>%
       mutate(score_to_mean_ratio = (score+pseudo_count)/(local_mean+pseudo_count)) %>%
       mutate(z_score = (score - local_mean)/local_sd)
     
