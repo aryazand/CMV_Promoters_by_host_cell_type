@@ -20,12 +20,12 @@ dnt2_raw_runs = ["4_lane1_20220610000_S4_L001_R1_001.fastq.gz",
 dnt2_raw_files = expand("raw_data/D-NT2_20220610/{run}", run = dnt2_raw_runs)
 dnt2_processed_fastq = expand("results/processed_fastq/D-NT2_20220610/{sample}_20220610000_R{direction}.trimmed_dedupped.fastq.paired.fq", sample = [4,6], direction = [1,2])
 dnt2_aligned = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000_cmv.{ext}", sample = [4,6], ext = ['bed', 'bw'])
-dnt2_5prime_coverage = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000_5prime_coverage_{strand}_strand.tss", sample = [4,6], strand = ["pos", "minus"])
+dnt2_5prime_coverage = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000_5prime_coverage.bed", sample = [4,6])
 
 hff_raw_files = expand("raw_data/HFF_72hr/{SRR_ID}_R{direction}.fastq.gz", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
 hff_processed_fastq = expand("results/processed_fastq/HFF_72hr/{SRR_ID}_R{direction}.trimmed_dedupped.fastq.paired.fq", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
 hff_aligned = expand("results/aligned_reads/HFF_72hr/{SRR_ID}_cmv.bed", SRR_ID = ["SRR13848024", "SRR13848026"])
-hff_5prime_coverage = expand("results/aligned_reads/HFF_72hr/{SRR_ID}_5prime_coverage_{strand}_strand.tss", SRR_ID = ["SRR13848024", "SRR13848026"], strand = ["pos", "minus"])
+hff_5prime_coverage = expand("results/aligned_reads/HFF_72hr/{SRR_ID}_5prime_coverage.bed", SRR_ID = ["SRR13848024", "SRR13848026"])
 
 ############################
 # Setup Environement
@@ -209,18 +209,17 @@ rule bam_to_bigwig:
   shell:
       "bamCoverage -p 5 -b {input.bam} -o {output} 2> {log.err}"
 
-rule bam_to_5prime_coverage:
+
+##########################
+# Process Bed File
+##########################
+
+rule bed_to_5prime_coverage:
   input:
       "results/aligned_reads/{experiment}/{sample}_cmv.bed"
   output:
-      plus_strand = "results/aligned_reads/{experiment}/{sample}_5prime_coverage_pos_strand.tss",
-      minus_strand = "results/aligned_reads/{experiment}/{sample}_5prime_coverage_minus_strand.tss"
+      "results/aligned_reads/{experiment}/{sample}_5prime_coverage.bed",
   log:
-      err = "sandbox/bam_to_5prime_coverage.{experiment}_{sample}.err"
-  params:
-      ref_cmv_genome = "./raw_data/genomic_data/FJ616285.1.chrom.sizes"
-  shell:
-      """
-      bedtools genomecov -5 -d -strand + -i {input} -g {params.ref_cmv_genome} > {output.plus_strand} 2> {log.err}
-      bedtools genomecov -5 -d -strand - -i {input} -g {params.ref_cmv_genome} > {output.minus_strand} 2> {log.err}
-      """
+      err = "sandbox/bed_to_5prime_coverage.{experiment}_{sample}.err"
+  script:
+      "scripts/bed_to_5prime_coverage.R"
