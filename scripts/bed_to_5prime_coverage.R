@@ -8,5 +8,6 @@ make_fiveprimeends_grange <- function(input_bed) {
   return(fiveprime_unique)
 }
 
-x = make_fiveprimeends_grange(snakemake@input[[1]]) 
+x= rtracklayer::import(snakemake@input[[1]])
+x = make_fiveprimeends_grange(x) 
 rtracklayer::export.bed(x, snakemake@output[[1]])
