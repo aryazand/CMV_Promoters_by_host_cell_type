@@ -24,7 +24,7 @@ dnt2_5prime_coverage = expand("results/aligned_reads/D-NT2_20220610/{sample}_202
 
 hff_raw_files = expand("raw_data/HFF_72hr/{SRR_ID}_R{direction}.fastq.gz", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
 hff_processed_fastq = expand("results/processed_fastq/HFF_72hr/{SRR_ID}_R{direction}.trimmed_dedupped.fastq.paired.fq", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
-hff_aligned = expand("results/aligned_reads/HFF_72hr/{SRR_ID}_cmv.bed", SRR_ID = ["SRR13848024", "SRR13848026"])
+hff_aligned = expand("results/aligned_reads/HFF_72hr/{SRR_ID}_cmv.{ext}", SRR_ID = ["SRR13848024", "SRR13848026"], ext = ['bed', 'bw'])
 hff_5prime_coverage = expand("results/aligned_reads/HFF_72hr/{SRR_ID}_5prime_coverage.bed", SRR_ID = ["SRR13848024", "SRR13848026"])
 
 ############################
