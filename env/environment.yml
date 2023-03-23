@@ -56,7 +56,7 @@ dependencies:
   - cairo=1.16.0=ha61ee94_1014
   - certifi=2022.12.7=pyhd8ed1ab_0
   - contourpy=1.0.5=py310hbf28c38_1
-  - curl=7.86.0=h7bff187_0
+  - curl=7.87.0=h6312ad2_0
   - cutadapt=4.1=py310h1425a21_1
   - cycler=0.11.0=pyhd8ed1ab_0
   - dart-sass=1.54.4=ha770c72_0
@@ -88,6 +88,7 @@ dependencies:
   - gsl=2.7=he838d99_0
   - gxx_impl_linux-64=12.2.0=hcc96c02_19
   - harfbuzz=5.3.0=h418a68e_0
+  - htslib=1.17=h6bc39ce_0
   - icu=70.1=h27087fc_0
   - importlib-metadata=4.13.0=pyha770c72_0
   - importlib_metadata=4.13.0=hd8ed1ab_0
@@ -97,7 +98,7 @@ dependencies:
   - kernel-headers_linux-64=2.6.32=he073ed8_15
   - keyutils=1.6.1=h166bdaf_0
   - kiwisolver=1.4.4=py310hbf28c38_1
-  - krb5=1.19.3=h3790be6_0
+  - krb5=1.20.1=hf9c8cef_0
   - lcms2=2.12=hddcbb42_0
   - ld_impl_linux-64=2.39=hc81fddc_0
   - lerc=4.0.0=h27087fc_0
@@ -106,8 +107,8 @@ dependencies:
   - libbrotlidec=1.0.9=h166bdaf_8
   - libbrotlienc=1.0.9=h166bdaf_8
   - libcblas=3.9.0=16_linux64_openblas
-  - libcups=2.3.3=h3e49a29_2
-  - libcurl=7.86.0=h7bff187_0
+  - libcups=2.3.3=h36d4200_3
+  - libcurl=7.87.0=h6312ad2_0
   - libdeflate=1.13=h166bdaf_0
   - libedit=3.1.20191231=he28a2e2_2
   - libev=4.33=h516909a_1
@@ -116,14 +117,14 @@ dependencies:
   - libgcc-ng=12.2.0=h65d4601_19
   - libgfortran-ng=12.2.0=h69a702a_19
   - libgfortran5=12.2.0=h337968e_19
-  - libglib=2.74.1=h7a41b64_0
+  - libglib=2.74.1=h606061b_1
   - libgomp=12.2.0=h65d4601_19
   - libiconv=1.17=h166bdaf_0
   - liblapack=3.9.0=16_linux64_openblas
   - libnghttp2=1.47.0=hdcd2b5c_1
   - libnsl=2.0.0=h7f98852_0
   - libopenblas=0.3.21=pthreads_h78a6416_3
-  - libpng=1.6.38=h753d276_0
+  - libpng=1.6.39=h753d276_0
   - libsanitizer=12.2.0=h46fd767_19
   - libsqlite=3.39.4=h753d276_0
   - libssh2=1.10.0=haa6b8db_3
@@ -149,7 +150,7 @@ dependencies:
   - pandoc=2.19.2=h32600fe_1
   - pango=1.50.12=h382ae3d_0
   - pbzip2=1.1.13=0
-  - pcre2=10.37=hc3806b6_1
+  - pcre2=10.40=hc3806b6_0
   - perl=5.32.1=2_h7f98852_perl5
   - pigz=2.6=h27826a3_0
   - pillow=9.2.0=py310hbd86126_2
@@ -172,7 +173,7 @@ dependencies:
   - r-askpass=1.1=r42h06615bd_3
   - r-assertthat=0.2.1=r42hc72bb7e_3
   - r-backports=1.4.1=r42h06615bd_1
-  - r-base=4.2.2=h15a6132_0
+  - r-base=4.2.2=h6b4767f_2
   - r-base64enc=0.1_3=r42h06615bd_1005
   - r-bh=1.81.0_1=r42hc72bb7e_0
   - r-bit=4.0.5=r42h06615bd_0
@@ -378,7 +379,7 @@ dependencies:
   - r-zip=2.2.2=r42h06615bd_0
   - r-zoo=1.8_11=r42h06615bd_1
   - readline=8.1.2=h0f457ee_0
-  - samtools=1.6=h3f2fef4_8
+  - samtools=1.16.1=h00cdaf9_2
   - scipy=1.9.3=py310hdfbd76f_0
   - sed=4.8=he412f7d_0
   - seqkit=2.3.1=h9ee0642_0
