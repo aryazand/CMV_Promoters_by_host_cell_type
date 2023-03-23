@@ -48,7 +48,7 @@ rule all:
     dnt2_bed,
     dnt2_bw,
     hff_bed,
-    hff_bw
+    hff_bw,
 
     #5 prime coverage files
     dnt2_5prime_coverage,
