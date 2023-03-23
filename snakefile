@@ -19,12 +19,14 @@ dnt2_raw_runs = ["4_lane1_20220610000_S4_L001_R1_001.fastq.gz",
 
 dnt2_raw_files = expand("raw_data/D-NT2_20220610/{run}", run = dnt2_raw_runs)
 dnt2_processed_fastq = expand("results/processed_fastq/D-NT2_20220610/{sample}_20220610000_R{direction}.trimmed_dedupped.fastq.paired.fq", sample = [4,6], direction = [1,2])
-dnt2_aligned = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000_cmv.{ext}", sample = [4,6], ext = ['bed', 'bw'])
+dnt2_bed = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000_cmv.bed", sample = [4,6])
+dnt2_bw = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000_cmv_{direction}.bw", sample = [4,6], direction = ['for', 'rev'])
 dnt2_5prime_coverage = expand("results/aligned_reads/D-NT2_20220610/{sample}_20220610000_5prime_coverage.bed", sample = [4,6])
 
 hff_raw_files = expand("raw_data/HFF_72hr/{SRR_ID}_R{direction}.fastq.gz", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
 hff_processed_fastq = expand("results/processed_fastq/HFF_72hr/{SRR_ID}_R{direction}.trimmed_dedupped.fastq.paired.fq", SRR_ID = ["SRR13848024", "SRR13848026"], direction = [1,2])
-hff_aligned = expand("results/aligned_reads/HFF_72hr/{SRR_ID}_cmv.{ext}", SRR_ID = ["SRR13848024", "SRR13848026"], ext = ['bed', 'bw'])
+hff_bed = expand("results/aligned_reads/HFF_72hr/{SRR_ID}_cmv.{ext}", SRR_ID = ["SRR13848024", "SRR13848026"], ext = ['bed', 'bw'])
+hff_bw = expand("results/aligned_reads/HFF_72hr/{SRR_ID}_cmv_{direction}.bw", SRR_ID = ["SRR13848024", "SRR13848026"], direction = ['for', 'rev'])
 hff_5prime_coverage = expand("results/aligned_reads/HFF_72hr/{SRR_ID}_5prime_coverage.bed", SRR_ID = ["SRR13848024", "SRR13848026"])
 
 ############################
@@ -43,8 +45,10 @@ rule all:
     hff_processed_fastq,
 
     # Aligment Files
-    dnt2_aligned,
-    hff_aligned,
+    dnt2_bed,
+    dnt2_bw,
+    hff_bed,
+    hff_bw
 
     #5 prime coverage files
     dnt2_5prime_coverage,
@@ -203,11 +207,18 @@ rule bam_to_bigwig:
       bam = "results/aligned_reads/{experiment}/{sample}_cmv.bam",
       bai = "results/aligned_reads/{experiment}/{sample}_cmv.bam.bai"
   output:
-      "results/aligned_reads/{experiment}/{sample}_cmv.bw"
+      forward = "results/aligned_reads/{experiment}/{sample}_cmv_for.bw",
+      reverse = "results/aligned_reads/{experiment}/{sample}_cmv_rev.bw",
   log:
-      err = "sandbox/bam_to_bigwig.{experiment}_{sample}.err"
+      out_for = "sandbox/bam_to_bigwig.{experiment}_{sample}_for.out",
+      out_rev = "sandbox/bam_to_bigwig.{experiment}_{sample}_rev.out",
+      err_for = "sandbox/bam_to_bigwig.{experiment}_{sample}_for.err",
+      err_rev = "sandbox/bam_to_bigwig.{experiment}_{sample}_rev.err"
   shell:
-      "bamCoverage -p 5 -b {input.bam} -o {output} 2> {log.err}"
+      """
+      bamCoverage -p 5 -b {input.bam} --filterRNAstrand forward -o {output.forward} 2> {log.err_for} 1> {log.out_for}
+      bamCoverage -p 5 -b {input.bam} --filterRNAstrand reverse -o {output.reverse} 2> {log.err_rev} 1> {log.out_rev}
+      """
 
 
 ##########################
